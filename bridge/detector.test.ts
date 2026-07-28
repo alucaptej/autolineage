@@ -24,7 +24,7 @@ const EXP: Expectation = {
 
 function deps(overrides: Partial<DetectorDeps>): DetectorDeps {
   return {
-    dataJobIO: async () => ({ inputs: [], outputs: [] }),
+    dataJobIO: async () => ({ inputs: [], outputs: [], fineGrainedPairs: [], lastObserved: 0 }),
     datasetExists: async () => false,
     searchDatasets: async () => [],
     ...overrides,
@@ -68,12 +68,28 @@ test("inside grace window → pending", async () => {
   expect(await checkExpectation(EXP, Date.now(), deps({}))).toBe("pending");
 });
 
-test("healthy: fresh edges + dataset exists → null", async () => {
+test("healthy: fresh dataset-level edges + dataset exists → null", async () => {
   const fresh = Date.now() + 50_000;
   const d = deps({
     dataJobIO: async () => ({
       inputs: [{ urn: UP, time: fresh }, { urn: DOWN, time: fresh }],
       outputs: [{ urn: DOWN, time: fresh }],
+      fineGrainedPairs: [],
+      lastObserved: fresh,
+    }),
+    datasetExists: async () => true,
+  });
+  expect(await checkExpectation(EXP, nowMs, d)).toBeNull();
+});
+
+test("healthy: edge present ONLY as column-level fine-grained pair → null", async () => {
+  const fresh = Date.now() + 50_000;
+  const d = deps({
+    dataJobIO: async () => ({
+      inputs: [],
+      outputs: [{ urn: DOWN, time: fresh }],
+      fineGrainedPairs: [{ upstream: UP, downstream: DOWN }],
+      lastObserved: fresh,
     }),
     datasetExists: async () => true,
   });
@@ -86,8 +102,11 @@ test("fragmentation: stale canonical edge + fresh fragment URNs", async () => {
   const frag = "urn:li:dataset:(urn:li:dataPlatform:file,data/curated_events,PROD)";
   const d = deps({
     dataJobIO: async () => ({
-      inputs: [{ urn: UP, time: stale }, { urn: frag, time: fresh }],
-      outputs: [{ urn: DOWN, time: stale }, { urn: frag, time: fresh }],
+      // broken run rewrote the aspect: only fragment edges, canonical pair gone
+      inputs: [{ urn: frag, time: fresh }],
+      outputs: [{ urn: frag, time: fresh }],
+      fineGrainedPairs: [{ upstream: frag, downstream: frag }],
+      lastObserved: fresh,
     }),
     datasetExists: async () => true,
     searchDatasets: async () => [{ urn: frag }, { urn: DOWN }],
@@ -108,6 +127,8 @@ test("silent pipeline: marker present, zero fresh emissions", async () => {
     dataJobIO: async () => ({
       inputs: [{ urn: UP, time: stale }],
       outputs: [{ urn: DOWN, time: stale }],
+      fineGrainedPairs: [{ upstream: UP, downstream: DOWN }],
+      lastObserved: stale,
     }),
     datasetExists: async () => true,
   });

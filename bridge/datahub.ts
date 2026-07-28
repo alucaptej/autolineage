@@ -118,14 +118,27 @@ export async function datasetExists(urn: string): Promise<boolean> {
   return Boolean((d.dataset as { exists?: boolean } | null)?.exists);
 }
 
-/** dataJobInputOutput aspect of a datajob (edge freshness lives here). */
-export async function dataJobIO(datajobUrn: string): Promise<{
+/** Dataset urn embedded in a schemaField urn, or null. */
+function schemaFieldDataset(sf: string): string | null {
+  const m = sf.match(/^urn:li:schemaField:\((urn:li:dataset:\(.+?\)),[^)]+\)$/);
+  return m ? m[1] : null;
+}
+
+export interface DataJobIO {
   inputs: Array<{ urn: string; time: number }>;
   outputs: Array<{ urn: string; time: number }>;
-} | null> {
+  /** dataset-level pairs distilled from fineGrainedLineages (column lineage) */
+  fineGrainedPairs: Array<{ upstream: string; downstream: string }>;
+  /** when THIS aspect was last written — the freshness anchor (edge lastModified
+   * can survive re-writes; emission shape varies per Spark execution plan) */
+  lastObserved: number;
+}
+
+/** dataJobInputOutput aspect of a datajob (edge presence + freshness). */
+export async function dataJobIO(datajobUrn: string): Promise<DataJobIO | null> {
   const cfg = loadConfig();
   const res = await fetch(
-    `${cfg.gmsUrl}/openapi/v3/entity/datajob/${encodeURIComponent(datajobUrn)}/datajobinputoutput`,
+    `${cfg.gmsUrl}/openapi/v3/entity/datajob/${encodeURIComponent(datajobUrn)}/datajobinputoutput?systemMetadata=true`,
     { headers: { Authorization: `Bearer ${cfg.gmsToken}` }, signal: AbortSignal.timeout(15_000) },
   );
   if (!res.ok) return null;
@@ -133,12 +146,29 @@ export async function dataJobIO(datajobUrn: string): Promise<{
     value?: {
       inputDatasetEdges?: Array<{ destinationUrn: string; lastModified?: { time?: number } }>;
       outputDatasetEdges?: Array<{ destinationUrn: string; lastModified?: { time?: number } }>;
+      fineGrainedLineages?: Array<{ upstreams?: string[]; downstreams?: string[] }>;
     };
+    systemMetadata?: { lastObserved?: number };
   };
   const map = (edges?: Array<{ destinationUrn: string; lastModified?: { time?: number } }>) =>
     (edges ?? []).map((e) => ({ urn: e.destinationUrn, time: e.lastModified?.time ?? 0 }));
   if (!body.value) return null;
-  return { inputs: map(body.value.inputDatasetEdges), outputs: map(body.value.outputDatasetEdges) };
+  const pairs: Array<{ upstream: string; downstream: string }> = [];
+  for (const fg of body.value.fineGrainedLineages ?? []) {
+    for (const u of fg.upstreams ?? []) {
+      for (const d of fg.downstreams ?? []) {
+        const up = schemaFieldDataset(u);
+        const down = schemaFieldDataset(d);
+        if (up && down) pairs.push({ upstream: up, downstream: down });
+      }
+    }
+  }
+  return {
+    inputs: map(body.value.inputDatasetEdges),
+    outputs: map(body.value.outputDatasetEdges),
+    fineGrainedPairs: pairs,
+    lastObserved: body.systemMetadata?.lastObserved ?? 0,
+  };
 }
 
 /** Documents matching a title marker — reconciliation. */

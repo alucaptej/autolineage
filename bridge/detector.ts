@@ -88,10 +88,18 @@ export async function checkExpectation(
 
   const io = await dataJobIO(dataJobUrn(exp));
   const exists = await datasetExists(exp.downstream);
+  // The edge may surface as dataset-level edges OR only as column-level
+  // fineGrainedLineages, depending on the Spark execution plan of that run.
   const outEdge = io?.outputs.find((e) => e.urn === exp.downstream);
   const inEdge = io?.inputs.find((e) => e.urn === exp.upstream);
-  const edgeTime = outEdge && inEdge ? Math.min(outEdge.time, inEdge.time) : null;
-  const fresh = edgeTime !== null && edgeTime >= markerMs - cfg.indexLagGraceMs;
+  const fgPair = io?.fineGrainedPairs.some(
+    (p) => p.upstream === exp.upstream && p.downstream === exp.downstream,
+  );
+  const edgePresent = Boolean((outEdge && inEdge) || fgPair);
+  // Freshness anchor: when the aspect was last WRITTEN (edge lastModified can
+  // survive rewrites; lastObserved reflects this run's emission).
+  const edgeTime = io ? io.lastObserved : null;
+  const fresh = edgePresent && edgeTime !== null && edgeTime >= markerMs - cfg.indexLagGraceMs;
 
   if (exists && fresh) return null; // contract held for this run
 
@@ -104,9 +112,7 @@ export async function checkExpectation(
     }
   }
   // Did ANYTHING fresh get emitted by this pipeline's job at all?
-  const anyFresh =
-    (io?.outputs.some((e) => e.time >= markerMs - cfg.indexLagGraceMs) ?? false) ||
-    (io?.inputs.some((e) => e.time >= markerMs - cfg.indexLagGraceMs) ?? false);
+  const anyFresh = (io?.lastObserved ?? 0) >= markerMs - cfg.indexLagGraceMs;
 
   return {
     expectation_id: exp.id,
