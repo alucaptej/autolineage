@@ -131,6 +131,9 @@ test("silent pipeline: marker present, zero fresh emissions", async () => {
       lastObserved: stale,
     }),
     datasetExists: async () => true,
+    // pre-existing fragment URNs live in search forever — they must NOT flip
+    // a zero-fresh-emission run to "stale-or-fragmented"
+    searchDatasets: async () => [{ urn: "urn:li:dataset:(urn:li:dataPlatform:file,data/curated_events,PROD)" }],
   });
   const v = await checkExpectation(EXP, nowMs, d);
   if (v && v !== "pending") {

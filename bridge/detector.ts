@@ -129,7 +129,9 @@ export async function checkExpectation(
       edge_last_modified: edgeTime,
       fresh_edges: anyFresh,
       fragment_candidates: [...hits].slice(0, 10),
-      signature_hint: anyFresh || hits.size ? "stale-or-fragmented" : "silent-pipeline",
+      // Freshness decides the hint: pre-existing fragment URNs live in search
+      // forever, but a run that emitted NOTHING is silent regardless of them.
+      signature_hint: anyFresh ? "stale-or-fragmented" : "silent-pipeline",
     },
   };
 }
