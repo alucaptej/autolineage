@@ -116,6 +116,16 @@ export function openCaseFor(expectationId: string): CaseRow | null {
   );
 }
 
+/** Latest case for the expectation in ANY state — a run marker is consumed by
+ * the case it spawned; only a NEWER marker may open another case. */
+export function latestCaseFor(expectationId: string): CaseRow | null {
+  return (
+    (caseDb()
+      .query(`SELECT * FROM doctor_cases WHERE expectation_id = ? ORDER BY created_at DESC LIMIT 1`)
+      .get(expectationId) as CaseRow | null) ?? null
+  );
+}
+
 export function casesInState(...states: CaseState[]): CaseRow[] {
   const q = states.map(() => "?").join(",");
   return caseDb()

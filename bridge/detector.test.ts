@@ -151,6 +151,22 @@ test("open case dedupe: second check returns null while case open", async () => 
   expect(await checkExpectation(EXP, nowMs, d)).toBeNull();
 });
 
+test("a marker is consumed by its case even after the case FAILS; a newer marker re-arms", async () => {
+  const d = deps({ datasetExists: async () => false });
+  const v = await checkExpectation(EXP, nowMs, d);
+  expect(v).not.toBeNull();
+  const { createCase, recordRunMarker, transitionCase } = await import("./cases.ts");
+  const c = createCase(EXP.id, v);
+  transitionCase(c.id, "FAILED");
+  // same stale marker, case terminal → must NOT mint another case (runaway guard)
+  expect(await checkExpectation(EXP, nowMs, d)).toBeNull();
+  // a fresh pipeline run (new marker) legitimately re-arms detection
+  await new Promise((r) => setTimeout(r, 5));
+  recordRunMarker(EXP.pipeline);
+  const later = Date.now() + 60_000;
+  expect(await checkExpectation(EXP, later, d)).not.toBeNull();
+});
+
 test("dataJobUrn and verifyNamespaceUrn shapes", () => {
   expect(dataJobUrn(EXP)).toBe(
     "urn:li:dataJob:(urn:li:dataFlow:(spark,merge_upsert_curated,default),merge_upsert_curated)",

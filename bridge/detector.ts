@@ -6,7 +6,7 @@ import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { loadConfig } from "./config.ts";
 import { dataJobIO, datasetExists, searchDatasets } from "./datahub.ts";
-import { latestRunMarker, openCaseFor } from "./cases.ts";
+import { latestCaseFor, latestRunMarker, openCaseFor } from "./cases.ts";
 
 export interface Expectation {
   id: string;
@@ -85,6 +85,11 @@ export async function checkExpectation(
   const markerMs = Date.parse(marker);
   if (nowMs - markerMs < cfg.indexLagGraceMs) return "pending"; // let indexing settle
   if (openCaseFor(exp.id)) return null; // dedupe: one open case per expectation
+  // A marker is consumed by the case it spawned — even a FAILED one. Without
+  // this, a stale marker re-arms every tick after the case terminates and the
+  // detector mints incident/agent-run duplicates forever (observed live).
+  const last = latestCaseFor(exp.id);
+  if (last && markerMs <= Date.parse(last.created_at)) return null;
 
   const io = await dataJobIO(dataJobUrn(exp));
   const exists = await datasetExists(exp.downstream);
