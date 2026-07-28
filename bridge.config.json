@@ -1,0 +1,14 @@
+{
+  "env_file": "~/hack/.env.datahub",
+  "demo_repo_path": "~/hack/autolineage-demo-pipelines",
+  "demo_repo_slug": "alucaptej/autolineage-demo-pipelines",
+  "engine_path": "~/hack/workgraph-rt",
+  "engine_db": "~/hack/workgraph-rt/wg.db",
+  "expectations_path": "~/hack/autolineage-demo-pipelines/expectations.json",
+  "doctor_db": "doctor.db",
+  "attempts_cap": 2,
+  "case_wall_clock_ms": 10800000,
+  "detector_interval_ms": 60000,
+  "verifier_interval_ms": 15000,
+  "index_lag_grace_ms": 30000
+}

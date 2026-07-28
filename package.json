@@ -1,0 +1,12 @@
+{
+  "name": "autolineage",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Self-healing lineage for DataHub — detect, diagnose via MCP, repair via CI-tested PRs, verify, write back.",
+  "scripts": {
+    "test": "bun test",
+    "bridge": "bun bridge/index.ts",
+    "check": "bun bridge/doctor-check.ts"
+  }
+}
