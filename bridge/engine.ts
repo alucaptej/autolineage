@@ -82,6 +82,28 @@ export function findWorkItemByMarker(caseId: string): string | null {
 
 export const TERMINAL_FAILURES = new Set(["RETRY_EXHAUSTED", "OPERATOR_REJECTED", "BUDGET_EXHAUSTED"]);
 
+export interface PendingGate {
+  gateId: string;
+  workItemId: string;
+  title: string;
+  prNumber: number | null;
+}
+
+/** Every pending merge gate with its work item's title (case marker lives there). */
+export function listPendingMergeGates(): PendingGate[] {
+  const d = engineDb();
+  return (
+    d
+      .query(
+        `SELECT g.id AS gateId, g.work_item_id AS workItemId, wi.title AS title,
+                (SELECT pr_number FROM change_sets cs WHERE cs.work_item_id = g.work_item_id ORDER BY rowid DESC LIMIT 1) AS prNumber
+         FROM operator_gates g JOIN work_items wi ON wi.id = g.work_item_id
+         WHERE g.kind = 'merge_approval' AND g.status = 'pending'`,
+      )
+      .all() as PendingGate[]
+  );
+}
+
 // ---- gate mutations (the only engine-DB writes the bridge performs) ----------
 
 function engineDbRw(): Database {

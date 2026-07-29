@@ -14,7 +14,7 @@ import {
   transitionCase,
 } from "./cases.ts";
 import { checkExpectation, type Expectation, loadExpectations } from "./detector.ts";
-import { enqueueWorkItem, observeWorkItem, rejectGate, TERMINAL_FAILURES } from "./engine.ts";
+import { enqueueWorkItem, listPendingMergeGates, observeWorkItem, rejectGate, TERMINAL_FAILURES } from "./engine.ts";
 import { reconcile } from "./reconcile.ts";
 import { driveVerification } from "./verifier.ts";
 
@@ -57,7 +57,36 @@ async function detectorTick(): Promise<void> {
   }
 }
 
+/** Orphan sweep: a work item whose case already terminated must never sit at a
+ * pending merge gate (observed live: a case FAILED on wall clock mid-arch, its
+ * item kept running and parked at the gate hours later). Reject such gates and
+ * close their PRs — nothing will ever verify them. */
+async function orphanGateSweep(): Promise<void> {
+  for (const g of listPendingMergeGates()) {
+    const caseId = g.title.match(/\[autolineage:(case_[a-z0-9]+)\]/)?.[1];
+    if (!caseId) continue;
+    const c = getCaseById(caseId);
+    if (!c || (c.state !== "HEALED" && c.state !== "FAILED")) continue;
+    console.error(`[sweep] rejecting orphaned gate ${g.gateId} (item ${g.workItemId}, case ${caseId} is ${c.state})`);
+    rejectGate(g.gateId, g.workItemId, `case ${caseId} already terminal (${c.state}) — orphaned item`);
+    if (g.prNumber) {
+      try {
+        execFileSync("gh", ["pr", "close", String(g.prNumber), "--repo", cfg.demoRepoSlug, "--comment",
+          `AutoLineage: closing without merge — the originating case ${caseId} already terminated (${c.state}). Nothing will verify this PR.`],
+          { encoding: "utf8", timeout: 30_000 });
+      } catch (e) {
+        console.error(`[sweep] pr close #${g.prNumber} failed: ${e instanceof Error ? e.message : e}`);
+      }
+    }
+  }
+}
+
+function getCaseById(id: string): CaseRow | null {
+  return (caseDb().query(`SELECT * FROM doctor_cases WHERE id = ?`).get(id) as CaseRow | null) ?? null;
+}
+
 async function driverTick(): Promise<void> {
+  await orphanGateSweep();
   // INCIDENT_RAISED → enqueue the work item
   for (const c of casesInState("INCIDENT_RAISED")) {
     const exp = expFor(c);
