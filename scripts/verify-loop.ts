@@ -71,8 +71,14 @@ const inflight = caseDb().query(`SELECT count(*) c FROM operations WHERE status 
 check("no inflight (crash-window) operations", inflight.c === 0);
 
 const incidents = await activeIncidents(exp.downstream);
-if (c.state === "HEALED") check("no active incidents on the dataset", incidents.length === 0, `${incidents.length}`);
-else check("incident visible for humans (active) or explicitly resolved", true, `${incidents.length} active`);
+if (c.state === "HEALED") {
+  // Older FAILED cases legitimately keep their incidents open — assert only
+  // that THIS case's incident is no longer active.
+  const mine = incidents.find((i) => i.urn === c.incident_urn);
+  check("this case's incident is resolved", !mine, mine ? mine.urn : "");
+} else {
+  check("incident visible for humans (active) or explicitly resolved", true, `${incidents.length} active`);
+}
 
 console.log(failures ? `\n${failures} check(s) FAILED` : "\nall checks passed");
 process.exit(failures ? 1 : 0);
