@@ -1,6 +1,6 @@
 // Startup reconciliation: settle every inflight ledger row (crash window) by
 // asking the remote system of record, keyed on deterministic markers.
-import { activeIncidents, searchDocumentsByTitle } from "./datahub.ts";
+import { allIncidents, searchDocumentsByTitle } from "./datahub.ts";
 import { getCase, inflightOps, settleOp } from "./cases.ts";
 import { findWorkItemByMarker } from "./engine.ts";
 import { loadExpectations } from "./detector.ts";
@@ -16,7 +16,7 @@ export async function reconcile(): Promise<number> {
       switch (op.kind) {
         case "incident": {
           const marker = `[autolineage:${op.case_id}]`;
-          const hits = exp ? await activeIncidents(exp.downstream) : [];
+          const hits = exp ? await allIncidents(exp.downstream) : [];
           const mine = hits.find((i) => i.title.includes(marker));
           settleOp(op.idem_key, mine ? { done: true, externalRef: mine.urn } : { done: false, error: "not found remotely — re-execute" });
           break;

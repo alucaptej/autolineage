@@ -67,11 +67,25 @@ export interface ActiveIncident {
   title: string;
 }
 
-/** Active (non-resolved) incidents on an entity — reconciliation + dedupe. */
+/** Active (non-resolved) incidents on an entity — operator visibility + dedupe. */
 export async function activeIncidents(resourceUrn: string): Promise<ActiveIncident[]> {
   const d = await gql(
     `query ($urn: String!) { entity(urn: $urn) { ... on Dataset {
         incidents(start: 0, count: 50, state: ACTIVE) {
+          incidents { urn title }
+        } } } }`,
+    { urn: resourceUrn },
+  );
+  const entity = d.entity as { incidents?: { incidents?: ActiveIncident[] } } | null;
+  return entity?.incidents?.incidents ?? [];
+}
+
+/** ALL incidents regardless of state — reconciliation must see resolved ones
+ * too, or a marker created-then-resolved reads as "not found" and re-executes. */
+export async function allIncidents(resourceUrn: string): Promise<ActiveIncident[]> {
+  const d = await gql(
+    `query ($urn: String!) { entity(urn: $urn) { ... on Dataset {
+        incidents(start: 0, count: 100) {
           incidents { urn title }
         } } } }`,
     { urn: resourceUrn },
