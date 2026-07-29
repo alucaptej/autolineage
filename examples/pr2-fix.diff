@@ -1,0 +1,15 @@
+diff --git a/run.sh b/run.sh
+index f54dec0..6e69e54 100755
+--- a/run.sh
++++ b/run.sh
+@@ -17,7 +17,9 @@ export PYSPARK_DRIVER_PYTHON="$VENV_DIR/bin/python"
+ 
+ # Absolute data root keeps dataset URNs canonical — relative paths fragment the
+ # lineage graph into duplicate entities (one URN per working directory).
+-export DATA_DIR="${DATA_DIR:-data}"
++# Must stay in sync with expectations.json "data_root"
++# (incident urn:li:incident:24efa153-a224-4648-afda-8fa8f777db50).
++export DATA_DIR="${DATA_DIR:-/private/tmp/lakehouse}"
+ 
+ exec "$VENV_DIR/bin/spark-submit" \
+   --packages io.acryl:acryl-spark-lineage:0.2.17,io.delta:delta-spark_2.12:3.3.2 \

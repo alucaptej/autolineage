@@ -1,0 +1,33 @@
+{
+    "urn": "urn:li:incident:24efa153-a224-4648-afda-8fa8f777db50",
+    "incidentKey": {
+        "value": {
+            "id": "24efa153-a224-4648-afda-8fa8f777db50"
+        }
+    },
+    "incidentInfo": {
+        "value": {
+            "entities": [
+                "urn:li:dataset:(urn:li:dataPlatform:file,/private/tmp/lakehouse/curated_events,PROD)"
+            ],
+            "created": {
+                "actor": "urn:li:corpuser:__datahub_system",
+                "time": 1785259934718
+            },
+            "description": "curated_events must be lineage-connected to raw_events through the merge_upsert_curated Spark job\n\nSignature: stale-or-fragmented\nEvidence: {\"dataset_exists\":true,\"edge_last_modified\":1785259849246,\"fresh_edges\":true,\"fragment_candidates\":[\"urn:li:dataset:(urn:li:dataPlatform:file,data/curated_events,PROD)\",\"urn:li:dataset:(urn:li:dataPlatform:file,verify-case-test./private/tmp/lakehouse/curated_events,PROD)\",\"urn:li:dataset:(urn:li:dataPlatform:file,/Users/ww/hack/autolineage-demo-pipelines/data/curated_events,PROD)\",\"urn:li:dataset:(urn:li:dataPlatform:file,data/raw_events,PROD)\",\"urn:li:dataset:(urn:li:dataPlatform:file,/Users/ww/hack/autolineage-demo-pipelines/data/raw_events,PROD)\",\"urn:li:dataset:(urn:li:dataPlatform:file,verify-case-test./private/tmp/lakehouse/raw_events,PROD)\"],\"signature_hint\":\"stale-or-fragmented\"}\nRun marker: 2026-07-28T17:30:50.442Z",
+            "source": {
+                "type": "MANUAL"
+            },
+            "type": "OPERATIONAL",
+            "title": "[autolineage:case_ms4xo5o0o92kim] Lineage contract 'curated-events-fed-by-raw-events' violated",
+            "status": {
+                "message": "[autolineage:case_ms4xo5o0o92kim] canonical lineage confirmed post-merge (PR #2)",
+                "lastUpdated": {
+                    "actor": "urn:li:corpuser:__datahub_system",
+                    "time": 1785260955262
+                },
+                "state": "RESOLVED"
+            }
+        }
+    }
+}

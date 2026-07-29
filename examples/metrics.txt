@@ -1,0 +1,2 @@
+time_to_heal_ms|1021278.0
+attempts|0.0
