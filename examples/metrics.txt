@@ -1,2 +1,3 @@
-time_to_heal_ms|1021278.0
-attempts|0.0
+case_ms4xo5o0o92kim|HEALED|17.0
+case_ms5srde8j38qps|HEALED|22.0
+case_ms5tp6o25acvou|HEALED|21.4

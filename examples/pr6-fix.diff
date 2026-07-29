@@ -1,0 +1,18 @@
+diff --git a/run.sh b/run.sh
+index 961c8a1..b705824 100755
+--- a/run.sh
++++ b/run.sh
+@@ -18,8 +18,11 @@ export PYSPARK_DRIVER_PYTHON="$VENV_DIR/bin/python"
+ # Absolute data root keeps dataset URNs canonical — relative paths fragment the
+ # lineage graph into duplicate entities (one URN per working directory).
+ # Must stay in sync with expectations.json "data_root"
+-# (incident urn:li:incident:24efa153-a224-4648-afda-8fa8f777db50).
+-export DATA_DIR="${DATA_DIR:-data}"
++# (incident urn:li:incident:24efa153-a224-4648-afda-8fa8f777db50; recurred as
++# incident urn:li:incident:163ae9e1-c0de-463f-aa95-732812cac358).
++# Keep this a single unindented `export DATA_DIR=` line with no trailing comment:
++# the Makefile `break` target rewrites it with a `^export DATA_DIR=` sed anchor.
++export DATA_DIR="${DATA_DIR:-/private/tmp/lakehouse}"
+ 
+ # The lineage emission endpoint is owned by this entrypoint, not by
+ # conf/spark.conf: a stale or locally edited spark.datahub.rest.server makes
